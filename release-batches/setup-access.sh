@@ -232,12 +232,15 @@ run_wizard() {
 
   stage "Approve the dedicated release App"
   say "Approve App creation, then choose Only select repositories and select $release_repository."
-  say "The App gets repository Administration, Contents, Pull requests and Commit statuses permissions."
+  say "The App gets repository Administration, Contents, Pull requests, Commit statuses and Workflows read/write permissions."
   say "Its key and App ID are stored as organization Actions credentials available only to the selected repository."
   if gh variable get RELEASE_APP_ID --org "$release_owner" >/dev/null 2>&1; then
+    open_url "https://github.com/organizations/$release_owner/settings/apps"
+    step "Edit the existing release App, open Permissions & events, and set repository Workflows to Read and write."
+    pause "Press Enter after saving the App permissions."
     open_url "https://github.com/organizations/$release_owner/settings/installations"
-    step "Configure the existing release App and add the adopting repository to its selected repositories."
-    pause "Press Enter after saving its repository selection."
+    step "Configure the existing release App, approve its requested permission update, and add the adopting repository to its selected repositories."
+    pause "Press Enter after approving Workflows read/write and saving its repository selection."
   else
     "$release_bun" "$release_root/release-batches/register-app.ts" --repository "$release_repository"
   fi

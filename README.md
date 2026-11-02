@@ -32,6 +32,15 @@ week and isolated `hotfix/*` PRs are supported.
    batch, and activate production checks after bootstrap succeeds. Optional
    `--checks 'Project checks,Another check'` specifies repository CI checks.
 
+Before upgrading an existing release App to this version, open organization
+Settings → Developer settings → GitHub Apps → the release App → Permissions &
+events. Set repository **Workflows** to **Read and write** and save, then open
+the App's installation and approve the requested permission update before
+adopting the corrected workflow pin. New registrations request this permission
+through the manifest. It permits maintenance merges that create or update
+`.github/workflows/*` revisions; Contents write alone does not cover those
+workflow changes. See [changing App permissions](https://docs.github.com/en/apps/maintaining-github-apps/modifying-a-github-app-registration#changing-the-permissions-of-a-github-app).
+
 Organization rules use explicit repository IDs, never all repositories.
 Adoption preserves other selected repositories and refuses to replace their
 App, change their protection policy, or silently reactivate disabled rules

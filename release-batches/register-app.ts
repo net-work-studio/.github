@@ -8,6 +8,30 @@ interface AppCredentials {
   slug: string;
 }
 
+export function appManifest(owner: string, origin: string, nonce: string) {
+  return {
+    name: `${owner} release batches`.slice(0, 34),
+    url: `https://github.com/${owner}/.github`,
+    description:
+      "Maintain explicitly opted-in staging batches; production review and checks remain required.",
+    public: false,
+    redirect_url: `${origin}/callback`,
+    setup_url: `${origin}/installed?state=${nonce}`,
+    hook_attributes: {
+      url: `https://github.com/${owner}/.github`,
+      active: false,
+    },
+    default_permissions: {
+      administration: "write",
+      contents: "write",
+      pull_requests: "write",
+      statuses: "write",
+      workflows: "write",
+    },
+    default_events: [],
+  };
+}
+
 function jwt(id: number, pem: string) {
   const now = Math.floor(Date.now() / 1000);
   const encode = (value: unknown) =>
@@ -54,26 +78,7 @@ async function run() {
       const origin = `http://127.0.0.1:${server.port}`;
       try {
         if (url.pathname === "/") {
-          const manifest = {
-            name: `${owner} release batches`.slice(0, 34),
-            url: `https://github.com/${owner}/.github`,
-            description:
-              "Maintain explicitly opted-in staging batches; production review and checks remain required.",
-            public: false,
-            redirect_url: `${origin}/callback`,
-            setup_url: `${origin}/installed?state=${nonce}`,
-            hook_attributes: {
-              url: `https://github.com/${owner}/.github`,
-              active: false,
-            },
-            default_permissions: {
-              administration: "write",
-              contents: "write",
-              pull_requests: "write",
-              statuses: "write",
-            },
-            default_events: [],
-          };
+          const manifest = appManifest(owner, origin, nonce);
           const escaped = JSON.stringify(manifest)
             .replaceAll("&", "&amp;")
             .replaceAll("'", "&#39;")
