@@ -310,3 +310,33 @@ test("handover never synchronizes a PR source into the production branch", async
   ).rejects.toThrow("reserved source");
   expect(repo.refs.get("main")).toBe("main-sha");
 });
+
+test("rollover retargets a fork's main PR without merging into local main", async () => {
+  const mergeBases: string[] = [];
+  class TrackedMemory extends Memory {
+    override async merge(base: string, head: string) {
+      mergeBases.push(base);
+      return super.merge(base, head);
+    }
+  }
+  const repo = new TrackedMemory();
+  const previous = await new Coordinator(repo, options, 999).run("bootstrap");
+  repo.pr.set(3, {
+    ...repo.makePull(3, "main", previous.active),
+    repository: "example/fork",
+    sha: "fork-main-sha",
+  });
+  mergeBases.length = 0;
+
+  const next = await new Coordinator(
+    repo,
+    { ...options, now: new Date("2026-11-09T06:15:00Z") },
+    999,
+  ).run("reconcile");
+
+  expect(next.active).toBe("staging-2026-W46-1");
+  expect(repo.pr.get(3)?.base).toBe(next.active);
+  expect(repo.refs.get("main")).toBe("main-sha");
+  expect(mergeBases).not.toContain("main");
+  expect(repo.statuses.get("fork-main-sha")).toContain("Fork PRs");
+});

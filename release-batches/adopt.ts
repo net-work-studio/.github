@@ -49,8 +49,7 @@ export function mergeAdoption(
   if (!existing) return desired;
   if (
     !existing.conditions.repository_id ||
-    JSON.stringify(existing.bypass_actors) !==
-      JSON.stringify(desired.bypass_actors)
+    !contains(existing.bypass_actors, desired.bypass_actors)
   )
     throw new Error(
       "Existing opt-in rule uses a different App or repository selector; refusing to broaden it",
@@ -85,6 +84,20 @@ export function mergeAdoption(
       },
     },
   };
+}
+
+export async function updateOrganizationRuleset(
+  path: string,
+  desired: Ruleset,
+  repoId: number,
+  request: typeof gh = gh,
+): Promise<{ id: number }> {
+  const latest = await request<Ruleset>(path);
+  const merged = mergeAdoption(latest, desired, repoId);
+  return request(path, "PUT", {
+    ...merged,
+    enforcement: desired.enforcement,
+  });
 }
 
 async function run() {
@@ -200,11 +213,9 @@ async function run() {
       plan.created && productionRule
         ? { ...plan.rule, enforcement: "disabled" }
         : { ...plan.rule, enforcement: "active" };
-    const result = await gh<{ id: number }>(
-      plan.path,
-      plan.created ? "POST" : "PUT",
-      rule,
-    );
+    const result = plan.created
+      ? await gh<{ id: number }>(plan.path, "POST", rule)
+      : await updateOrganizationRuleset(plan.path, rule, repo.id);
     saved.push({
       path: `orgs/${owner}/rulesets/${result.id}`,
       rule: plan.rule,
@@ -336,7 +347,13 @@ async function run() {
     throw new Error(
       "Bootstrap did not complete; production protection remains pending",
     );
-  for (const plan of [...saved, ...ciPlans])
+  for (const plan of saved)
+    await updateOrganizationRuleset(
+      plan.path,
+      { ...plan.rule, enforcement: "active" },
+      repo.id,
+    );
+  for (const plan of ciPlans)
     await gh(plan.path, "PUT", { ...plan.rule, enforcement: "active" });
   process.stdout.write(
     `Enabled release batches for ${owner}/${name} only. Active batch: ${state.active}\n`,

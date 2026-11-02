@@ -17,6 +17,7 @@ export function appManifest(owner: string, origin: string, nonce: string) {
     public: false,
     redirect_url: `${origin}/callback`,
     setup_url: `${origin}/installed?state=${nonce}`,
+    setup_on_update: true,
     hook_attributes: {
       url: `https://github.com/${owner}/.github`,
       active: false,

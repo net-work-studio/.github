@@ -7,6 +7,7 @@ import {
   policy,
   rolloverDue,
   type State,
+  stateBranch,
   successor,
 } from "./model.ts";
 
@@ -102,20 +103,18 @@ export class Coordinator {
         pull.base === this.options.production &&
         !pull.head.startsWith("hotfix/");
       if (pull.base !== from && !migrateLegacy) continue;
-      if (
-        [
-          this.options.production,
-          this.options.legacy,
-          "release-batch-state",
-        ].includes(pull.head) ||
-        pull.head.startsWith("staging-") ||
-        pull.head.startsWith("hotfix/")
-      ) {
-        throw new Error(
-          `PR #${pull.number} uses a reserved source branch; resolve it manually before handover`,
-        );
-      }
       if (pull.repository === this.options.repository) {
+        if (
+          [this.options.production, this.options.legacy, stateBranch].includes(
+            pull.head,
+          ) ||
+          pull.head.startsWith("staging-") ||
+          pull.head.startsWith("hotfix/")
+        ) {
+          throw new Error(
+            `PR #${pull.number} uses a reserved source branch; resolve it manually before handover`,
+          );
+        }
         // A conflict keeps the feature's original commits intact. Its required
         // up-to-date checks will block merging until its author resolves it.
         await this.repo.merge(pull.head, await this.requireBranch(to));
