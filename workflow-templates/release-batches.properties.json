@@ -1,0 +1,4 @@
+{
+  "name": "Opt-in weekly release batches",
+  "description": "Collect feature PRs into numbered staging batches and publish manually. Requires the release App and explicit ruleset adoption; replace RELEASE_KIT_COMMIT with a reviewed commit SHA."
+}

@@ -1,0 +1,74 @@
+name: Reusable release batches
+
+on:
+  workflow_call:
+    inputs:
+      app-id:
+        required: true
+        type: string
+      source-ref:
+        description: Immutable commit of this shared workflow and its scripts
+        required: true
+        type: string
+      operation:
+        default: reconcile
+        type: string
+      production-branch:
+        default: main
+        type: string
+      legacy-branch:
+        default: staging
+        type: string
+      timezone:
+        default: Europe/Zurich
+        type: string
+    secrets:
+      app-private-key:
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-batches-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  reconcile:
+    name: Release maintenance
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Validate immutable source
+        env:
+          SOURCE_REF: ${{ inputs.source-ref }}
+        run: '[[ "$SOURCE_REF" =~ ^[0-9a-f]{40}$ ]]'
+      - uses: actions/checkout@v6
+        with:
+          repository: net-work-studio/.github
+          ref: ${{ inputs.source-ref }}
+          persist-credentials: false
+          path: release-kit
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+      - uses: actions/create-github-app-token@v2
+        id: app
+        with:
+          app-id: ${{ inputs.app-id }}
+          private-key: ${{ secrets.app-private-key }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }}
+          permission-administration: write
+          permission-contents: write
+          permission-pull-requests: write
+          permission-statuses: write
+      - name: Reconcile release batches
+        env:
+          RELEASE_TOKEN: ${{ steps.app.outputs.token }}
+          RELEASE_APP_ID: ${{ inputs.app-id }}
+          RELEASE_OPERATION: ${{ inputs.operation }}
+          RELEASE_PRODUCTION_BRANCH: ${{ inputs.production-branch }}
+          RELEASE_LEGACY_BRANCH: ${{ inputs.legacy-branch }}
+          RELEASE_TIMEZONE: ${{ inputs.timezone }}
+        run: bun release-kit/release-batches/run.ts
